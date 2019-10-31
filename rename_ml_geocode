@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 24 11:37:34 2019
+
+@author: jizzard
+"""
+
+from datetime import datetime
+from eof.parsers import Sentinel
+from eof.download import download_eofs
+import numpy as np
+import sys
+import os
+import zipfile
+import py_gamma as pg
+
+
+def S1_short_name(S1_file):
+    parser = Sentinel(S1_file)
+    sat = parser.mission
+    aq_mode = S1_file[4:6]
+    start_date = parser.start_time.strftime('%Y%m%d')
+    start_time = parser.start_time.strftime('%H%M%S')
+    orbit = str(parser.absolute_orbit).zfill(6)
+    rel_orb = str(parser.relative_orbit).zfill(3)
+    short_name = sat + '_' + aq_mode + '_' + start_date + '_' + start_time + '_' + orbit + '_'\
+    + rel_orb
+    return short_name
+
+directory = '/geog/data/whale/alpha/jizzard/S1/Ferrigno/2019/'
+dem_path = '/geog/data/whale/alpha/jizzard/dems/'
+
+os.chdir(directory)
+
+n = 0
+n_files = 0
+
+print('List of Images to process:\n')
+
+for S1_file in os.listdir('zips/'):
+    if S1_file.endswith('.zip'):
+        s_name = S1_short_name(S1_file)
+        print(s_name)
+        n_files += 1
+
+
+#Make Sure all files are OK to be processed
+while True:
+    try:
+        proceed = str(input('Do you Wish to proceed? (y or n): '))
+    except ValueError:
+        print("Sorry, I didn't understand that.")
+        continue
+    if proceed == 'y':
+        print('We continue')
+        break
+    elif proceed == 'n':
+        print('Exiting program')
+        sys.exit()
+    else:
+        print("Sorry, I didn't understand that.")
+        continue
+    
+ #Begin Processing      'zips/'
+for file in os.listdir('zips/'):
+    if file.endswith('.zip'):
+        n += 1 #Counter
+        
+        #UnzipS1A_IW_SLC__1SSH_20190103T080501_20190103T080528_025310_02CCDF_E7F3.zip
+        os.chdir(directory)
+        with zipfile.ZipFile('zips/' + file, 'r') as zip_ref:
+            zip_ref.extractall('unzipped/')
+            for filename in os.listdir('unzipped/'): 
+                if filename.endswith('.SAFE'):
+                    s_name = S1_short_name(filename) #Find abbreviated name
+                    os.rename('unzipped/' + filename,'unzipped/' + s_name) #Rename with abbreviated name
+                
+        
+        s_name = S1_short_name(file)
+        os.chdir('unzipped/' + s_name + '/')
+        
+        
+        if len(os.listdir('.')) == 6: #Check if the files already exist  TO BE CHANGED
+            print('Generating Parameter File')
+            if (os.path.isdir('par_files') == False):
+                os.mkdir('par_files')
+            for file in os.listdir('measurement'):
+                subswath = file[6]
+                for filename in os.listdir('annotation'):
+                    if filename[6] == subswath:
+                        annot = filename
+                for filename in os.listdir('annotation/calibration'):
+                    if filename[18] == subswath:
+                        calib = filename
+                    if filename[12] == subswath:
+                        noise = filename
+        #Generate Parameter File    #Tiff File
+                pg.par_S1_SLC('measurement/' + file, 
+                              #Annotation File 
+                              'annotation/' + annot,  
+                              #Calibration File 
+                              'annotation/calibration/' + calib,     
+                              #Noise File
+                              'annotation/calibration/' + noise, 
+                              #Output Parameter File
+                              'par_files/' + file + '.slc.par',  
+                              #Output SLC file
+                              'par_files/' + file + '.slc',  
+                              #Output burst annotation file
+                              'par_files/' + file + '.slc.tops_par') 
+        else:
+            print ('The parameter files already exist')
+           
+        
+        
+        if (os.path.isdir('tabs') == False):#Check if tab files already exist
+            os.mkdir('tabs')
+        if len(os.listdir('tabs')) == 0:
+            print('Writing Tab File')
+            slc_tab = np.zeros((3,3)).astype('U256')
+            for file in os.listdir('par_files'):
+                if file[6] == '1':                            #Subswath 1
+                    if file[-1] == 'c':                       #SLC file
+                        slc_tab[0,0] = 'par_files/' + file
+                    elif file[-1] == 'r' and file[-5] == 'c': #SLC.par file
+                        slc_tab[0,1] = 'par_files/' +  file           
+                    elif file[-1] == 'r' and file[-4] == '_': #tops_par file
+                        slc_tab[0,2] = 'par_files/' + file
+                        
+                if file[6] == '2':
+                    if file[-1] == 'c': 
+                        slc_tab[1,0] = 'par_files/' + file
+                    elif file[-1] == 'r' and file[-5] == 'c':
+                        slc_tab[1,1] = 'par_files/' + file
+                    elif file[-1] == 'r' and file[-4] == '_':
+                        slc_tab[1,2] = 'par_files/' + file
+                        
+                if file[6] == '3':
+                    if file[-1] == 'c': 
+                        slc_tab[2,0] = 'par_files/' + file
+                    elif file[-1] == 'r' and file[-5] == 'c':
+                        slc_tab[2,1] = 'par_files/' + file
+                    elif file[-1] == 'r' and file[-4] == '_':
+                        slc_tab[2,2] = 'par_files/'  + file  
+            
+            tab = pg.write_tab(slc_tab, 'tabs/' + file[:30] + '.tab') #Write tab
+
+        
+            deramp_tab = slc_tab
+            
+            for x in range (0,3):
+                for y in range (0,3):
+                    deramp_tab[x,y] =  slc_tab[x,y] + '_deramp' #Needs Changing
+            deramped_tab = pg.write_tab(deramp_tab, 'tabs/' + file[:30] + '.deramped_tab') #If this is skipped, below does not work.
+            
+            print('tab file written')
+        else:
+            print('tab file already exists')
+                
+        for item in os.listdir('tabs/'):
+            if item[-5] == 'd':
+                out_tab = item
+            else:
+                tops_tab = item
+        
+        deramped_slc = pg.SLC_deramp_S1_TOPS('tabs/' + tops_tab,'tabs/' + out_tab,0)   
+        
+        mosaic_name = s_name + '.slc'
+        par_name =  s_name + '.par.slc'
+        rlks = 5 #10
+        azlks = 1 #2
+         
+        pg.SLC_mosaic_S1_TOPS('tabs/' + file[:30] + '.deramped_tab', mosaic_name, par_name, rlks, azlks)
+        
+        parser2 = Sentinel(S1_file)
+        download_eofs([parser2.start_time],[parser2.mission])
+        print('Orbit Files Downloaded')
+        
+        for file in os.listdir('.'):
+            if file.endswith('.EOF'):
+                orbit_file = file
+        #Apply Orbit File
+        pg.S1_OPOD_vec(par_name, orbit_file)
+        
+        mli_name = s_name + '.mli.tif'
+        mli_par_name = s_name + 'mli_par'
+        mli_rlks = 5 
+        mli_azlks = 1 
+        pg.multi_look(mosaic_name, par_name, mli_name, mli_par_name, mli_rlks, mli_azlks)  
+
+        
+        
+        mli_par = pg.ParFile(mli_par_name)
+        nr_slc = mli_par.get_value('range_samples')
+        naz_slc = mli_par.get_value('azimuth_lines')
+        
+        #Convert to dB scale raster file
+        bmp_name = 'dB_POE' + mli_name
+        
+        pg.ras_dB(mli_name, nr_slc, 1, 0, 1, 1, -30.0, 2.0, 0.0, 1, bmp_name) 
+        
+        for file in os.listdir('.'):
+            if file.endswith('.mli_par'):
+                mli_par_name = file
+                mli_par = pg.ParFile(mli_par_name)
+        
+            if file.endswith('.mli.tif'):
+                mli = file
+        
+        for file in os.listdir(dem_path):
+            if file.endswith('ferrigno_10.dem'):
+                dem = dem_path + file
+            if file.endswith('dem_par'):
+                dem_par_name = dem_path + file
+                dem_par = pg.ParFile(dem_par_name)
+        
+        pg.gc_map(mli_par_name,'-',dem_par_name,dem,'dem_seg_par','dem_seg',s_name + '.lut','-','-',s_name + 'sim_sar')
+        
+        for file in os.listdir('.'):
+            if file.endswith('dem_seg_par'):
+                dem_seg_par_name = file
+                dem_seg_par = pg.ParFile(dem_seg_par_name)
+        
+        lktbl_width = dem_seg_par.get_value('width')
+        mli_width = mli_par.get_value('range_samples', dtype = int)
+                                                                        #.bmp                         #2
+        pg.geocode_back(mli, mli_width, s_name + '.lut', s_name + '.geo.tif', lktbl_width, '-', 3, 2)
+        pg.data2geotiff(dem_seg_par_name, s_name + '.geo.tif', 0, s_name + '.tif')
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
