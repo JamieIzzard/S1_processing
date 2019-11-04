@@ -11,17 +11,33 @@ import os
 import numpy as np
 import sys
 
-image_a = '21_01'
-image_b = '02_02'
 
-file_name = image_a + '/' + image_b
 
-directory = '/geog/data/whale/alpha/jizzard/feature_tracking_test/21_01_02_02/'
+directory = '/geog/data/whale/alpha/jizzard/S1/Ferrigno/2019/pairs/S1A_IW_20190103_080501_025310_038_S1B_IW_20190109_080419_014414_038/'
+
 os.chdir(os.path.dirname(directory))
 
-if len(os.listdir(image_a)) != 2 and len(os.listdir(image_b)) != 2:
-    sys.exit('2 Files needed in image directories')
+def date(x):
+    return(x[7:15])
 
+images = sorted(os.listdir('.'), key = date) 
+image_a = images[0]
+image_b = images[1]
+    
+im_name = image_a + '_' + image_b
+coreg_slc = im_name + '.slc.cor'
+coreg_slc_par = im_name + '.par.slc.cor'
+lut = im_name + '.lut'
+off_par = im_name + '.off'
+offsets = im_name + '.offs'
+ccp = im_name + '.ccp'
+ccs = im_name + '.ccs'
+offsets_real = im_name + '.real'
+dem_par_name = '/geog/data/whale/alpha/jizzard/dems/ferrigno_10.dem_par'
+dem_name = '/geog/data/whale/alpha/jizzard/dems/ferrigno_10.dem'
+dem_seg_par = 'S1A_IW_20190103_080501_025310_038/dem_seg_par'
+dem_seg = 'S1A_IW_20190103_080501_025310_038/dem_seg'
+vel_lut = im_name + '_vel.lut'
 for file in os.listdir(image_a):
     if file.endswith('.par.slc'):
         a_par_file = image_a + '/' + file
@@ -50,73 +66,29 @@ pg.rdc_trans(a_par_file,\
              0.0, \
              #DEM reference height
              b_par_file,\
-             'file.lut' )#outputr lookup table
+             lut)#outputr lookup table
+
+
 
 pg.SLC_interp_lt(b_slc, a_par_file, b_par_file,\
                  #input 
-                 'file.lut',\
+                 lut,\
                  #input lookup table
                  a_par_file, b_par_file,\
                  #references par files
                  '-',\
                  #no input off par file
-                 'coregistered.slc', 'coregistered.par.slc')
+                 coreg_slc, coreg_slc_par)
                 #Output coregistered images
 
 
-pg.create_offset(a_par_file, 'coregistered.par.slc', \
+pg.create_offset(a_par_file, coreg_slc_par, \
                  #inputs
-                 'pair.off',\
+                 off_par,\
                  #output par file
                  1,\
                  #Intensity cross-correlation
                  50,10,\
                  #Range, Azimuth looks
                  0)#non-interactive
-                                                                #maybe coregistered slc par 
-pg.offset_pwr_tracking(a_slc, 'coregistered.slc', a_par_file, 'coregistered.par.slc',\
-                       'pair.off',\
-                       #input offset parameter file created with create_offset
-                       'pair.offs',\
-                       #complex offset estimations in range and azimuth
-                       'pair.ccp',\
-                       416, 128,\
-                       #range and Azimuth windows
-                       '-',\
-                       #no output in text format
-                       '-',\
-                       #oversampling factor ovr
-                       '-1',\
-                       #Threshold
-                       50, 10,\
-                       #range and azimuth spacing
-                       '-','-','-','-',\
-                       #rstart rstop azstart azstop
-                       5,\
-                       #Lanczos interp order
-                       1.0,\
-                       #bandwidth fraction of low pass filter on complex data (0.0 to 1.0)
-                       0,\
-                       #no deramp
-                       0,\
-                       #no intensity low pass filter
-                       0,1,\
-                       #no print flags (0,0)
-                       'pair.ccs')
-                        #output ccs
-
-
-#track_to_grid #Need script
-
-pixels=1317
-
-#convert complex offsets to real magnitude
-pg.cpx_to_real('pair.offs',\
-               #input complex data
-               'pair.real',\
-               #output real data
-               pixels,\
-               #Pixels 1317?
-               3) #Magnitude
-
-
+ 
