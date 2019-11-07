@@ -13,6 +13,7 @@ import sys
 
 
 
+
 directory = '/geog/data/whale/alpha/jizzard/S1/Ferrigno/2019/pairs/S1B_IW_20190906_080426_017914_038_S1A_IW_20190912_080508_028985_038/'
 
 
@@ -20,6 +21,7 @@ os.chdir(os.path.dirname(directory))
 
 def date(x):
     return(x[7:15])
+
 
 images = sorted(os.listdir('.'), key = date) 
 image_a = images[0]
@@ -45,6 +47,7 @@ vel_geo_swab = vel_geo + '_swab'
 vel_tif = im_name + 'vel.tif'
 disp_map = im_name + '.disp'
 gnd = im_name + '.gnd'
+
 
 for file in os.listdir(image_a):
     if file.endswith('.par.slc'):
@@ -101,6 +104,7 @@ pg.create_offset(a_par_file, coreg_slc_par, \
                  0)#non-interactive
  
 
+
 os.system('offset_pwr_tracking ' + a_slc + ' ' + coreg_slc + ' ' +  a_par_file + ' ' + coreg_slc_par + ' ' + off_par + ' ' + offsets + ' ' + ccp + ' 416 128 - - -1 50 10 - - - - 5 1.0 0 0 0 0 ' + ccs)
 
 #Filter with condition_offset_estimates
@@ -132,6 +136,4 @@ pg.geocode_back(offsets_real, pixels, vel_lut, vel_geo, geocoded_width,'-', 3, 0
 pg.swap_bytes(vel_geo, vel_geo_swab, 4 )
 
 pg.data2geotiff(dem_seg_par, vel_geo_swab, 2, vel_tif)
-
-
 
