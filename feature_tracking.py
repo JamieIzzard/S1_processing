@@ -13,7 +13,8 @@ import sys
 
 
 
-directory = '/geog/data/whale/alpha/jizzard/S1/Ferrigno/2019/pairs/S1A_IW_20190115_080501_025485_038_S1B_IW_20190121_080419_014589_038/'
+directory = '/geog/data/whale/alpha/jizzard/S1/Ferrigno/2019/pairs/S1B_IW_20190906_080426_017914_038_S1A_IW_20190912_080508_028985_038/'
+
 
 os.chdir(os.path.dirname(directory))
 
@@ -33,15 +34,17 @@ offsets = im_name + '.offs'
 ccp = im_name + '.ccp'
 ccs = im_name + '.ccs'
 offsets_real = im_name + '.real'
-dem_par_name = '/geog/data/whale/alpha/jizzard/dems/ferrigno_10.dem_par'
-dem_name = '/geog/data/whale/alpha/jizzard/dems/ferrigno_10.dem'
-dem_seg_par = image_a + '/dem_seg_par'
+dem_par_name = '/geog/data/whale/alpha/jizzard/dems/ferrigno_100.dem_par'
+dem_name = '/geog/data/whale/alpha/jizzard/dems/ferrigno_100.dem'
+dem_seg_par = '/geog/data/whale/alpha/jizzard/dems/ferrigno_100.dem_seg_par'
 dem_seg = image_a + '/dem_seg'
 vel_lut = im_name + '_vel.lut'
 vel_dem_seg = im_name + '.dem_seg'
 vel_geo = im_name + 'vel.geo'
 vel_geo_swab = vel_geo + '_swab'
-vel_tif = im_name + '.tif'
+vel_tif = im_name + 'vel.tif'
+disp_map = im_name + '.disp'
+gnd = im_name + '.gnd'
 
 for file in os.listdir(image_a):
     if file.endswith('.par.slc'):
@@ -100,14 +103,20 @@ pg.create_offset(a_par_file, coreg_slc_par, \
 
 os.system('offset_pwr_tracking ' + a_slc + ' ' + coreg_slc + ' ' +  a_par_file + ' ' + coreg_slc_par + ' ' + off_par + ' ' + offsets + ' ' + ccp + ' 416 128 - - -1 50 10 - - - - 5 1.0 0 0 0 0 ' + ccs)
 
+#Filter with condition_offset_estimates
 
-#track_to_grid #Need script
 
 pixels=1317
-geocoded_width = 10000
+
+pg.offset_tracking(offsets, ccp, a_par_file, off_par, disp_map, 2, '-',0)
+
+pg.lin_comb_cpx(1, disp_map, 0, 0, 0.16667, 0, gnd, pixels, 1, 0, 1, 1, 1)
+
+
+geocoded_width = 3138
 
 #convert complex offsets to real magnitude
-pg.cpx_to_real(offsets,\
+pg.cpx_to_real(gnd,\
                #input complex data
                offsets_real,\
                #output real data
