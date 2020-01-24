@@ -14,6 +14,7 @@ import sys
 import os
 import zipfile
 import py_gamma as pg
+import shutil
 
 
 def S1_short_name(S1_file):
@@ -28,8 +29,8 @@ def S1_short_name(S1_file):
     + rel_orb
     return short_name
 
-directory = '/geog/data/whale/alpha/jizzard/S1/Ferrigno/2019/'
-dem_path = '/geog/data/whale/alpha/jizzard/dems/'
+directory = '/geog/data/whale/alpha/jizzard/S1/AntPen/'
+dem_path = '/geog/data/whale/alpha/jizzard/dems/ant_pen/'
 
 os.chdir(directory)
 
@@ -66,13 +67,15 @@ while True:
 for file in os.listdir('zips/'):
     if file.endswith('.zip'):
         n += 1 #Counter
+        #if n > 20:
+            #sys.exit('Finished Processing 20 Images')
         
         #UnzipS1A_IW_SLC__1SSH_20190103T080501_20190103T080528_025310_02CCDF_E7F3.zip
         os.chdir(directory)
         with zipfile.ZipFile('zips/' + file, 'r') as zip_ref:
             zip_ref.extractall('unzipped/')
             for filename in os.listdir('unzipped/'): 
-                if filename.endswith('.SAFE'):
+               if filename.endswith('.SAFE'):
                     s_name = S1_short_name(filename) #Find abbreviated name
                     os.rename('unzipped/' + filename,'unzipped/' + s_name) #Rename with abbreviated name
                 
@@ -88,12 +91,12 @@ for file in os.listdir('zips/'):
             for file in os.listdir('measurement'):
                 subswath = file[6]
                 for filename in os.listdir('annotation'):
-                    if filename[6] == subswath:
+                    if filename[6] == subswath :
                         annot = filename
                 for filename in os.listdir('annotation/calibration'):
-                    if filename[18] == subswath:
+                    if filename[18] == subswath :
                         calib = filename
-                    if filename[12] == subswath:
+                    if filename[12] == subswath :
                         noise = filename
         #Generate Parameter File    #Tiff File
                 pg.par_S1_SLC('measurement/' + file, 
@@ -103,7 +106,7 @@ for file in os.listdir('zips/'):
                               'annotation/calibration/' + calib,     
                               #Noise File
                               'annotation/calibration/' + noise, 
-                              #Output Parameter File
+                              #Output Parameter Filealpha/jizzard/S1/Ferrigno/2019/november/
                               'par_files/' + file + '.slc.par',  
                               #Output SLC file
                               'par_files/' + file + '.slc',  
@@ -198,7 +201,7 @@ for file in os.listdir('zips/'):
         #Convert to dB scale raster file
         bmp_name = 'dB_POE' + mli_name
         
-        pg.ras_dB(mli_name, nr_slc, 1, 0, 1, 1, -30.0, 2.0, 0.0, 1, bmp_name) 
+        pg.ras_dB(mli_name, nr_slc, 1, 0, 1, 1, -30.0, 2.0, 0.0, 1, bmp_name) #produces tif, but not viewable in qgis
         
         for file in os.listdir('.'):
             if file.endswith('.mli_par'):
@@ -209,7 +212,7 @@ for file in os.listdir('zips/'):
                 mli = file
         
         for file in os.listdir(dem_path):
-            if file.endswith('ferrigno_10.dem'):
+            if file.endswith('ferrigno_10.dem') or file.endswith('.dem'): #Ferrigno_10
                 dem = dem_path + file
             if file.endswith('dem_par'):
                 dem_par_name = dem_path + file
@@ -227,6 +230,9 @@ for file in os.listdir('zips/'):
                                                                         #.bmp                         #2
         pg.geocode_back(mli, mli_width, s_name + '.lut', s_name + '.geo.tif', lktbl_width, '-', 3, 2)
         pg.data2geotiff(dem_seg_par_name, s_name + '.geo.tif', 0, s_name + '.tif')
+        
+        
+        shutil.rmtree('par_files')
         
         
         
