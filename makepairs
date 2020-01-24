@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Nov 27 13:16:22 2019
+
+@author: jizzard
+"""
+
+import os
+import shutil
+
+path = '/geog/data/whale/alpha/jizzard/S1/AntPen/'
+
+os.chdir(path)
+
+def date(x):
+    return(x[7:15])
+
+file_list = os.listdir(path + 'unzipped/')
+file_list = sorted(file_list, key = date) 
+os.mkdir('pairs')
+
+
+for i in range(len(file_list)):
+    file_1 = file_list[i]
+    file_2 = file_list[i+1]
+    new_dir_name = file_1 + '_' + file_2
+    new_dir = os.mkdir('pairs/' + new_dir_name)
+    
+    os.system('ln -s ' + path + 'unzipped/' + file_1 + '* '+ path + 'pairs/' + new_dir_name + '/' + file_1 )
+    #shutil.copytree('unzipped/' + file_1, 'pairs/' + new_dir_name + '/' +file_1)
+    print(file_1 + 'Copied')
+    os.system('ln -s ' + path + 'unzipped/' + file_2 + '* '+ path + 'pairs/' + new_dir_name + '/' + file_2 )
+
+    #shutil.copytree('unzipped/' + file_2, 'pairs/' + new_dir_name + '/' +file_2)
+    print(file_2 + 'Copied')
+    
+    print('Pair Copied')
+    
