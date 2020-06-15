@@ -44,7 +44,8 @@ def Get_lut(image, dem, dem_par):
                  mli_par,\
                  50,10)
     
-    dem_seg_par = image + '.dem_seg_par'
+    #dem_seg_par = image + '.dem_seg_par'
+    dem_seg_par=  'dem_seg_par'
     dem_seg = image + '.dem'
     dem2sar_lookup_table = image + '.dem2sar.lut'
     sim_sar = image + '.sim_sar'
@@ -213,15 +214,15 @@ def Get_tide(pair):
     bl_easting  = float(tl_easting)
     R_aoi = '-R' + str(tl_easting)+'/'+str(br_easting)+'/'+str(br_northing)+'/'+str(tl_northing)
     '''
-    
+    os.remove('ps_coords')
     
     if 'coords_ps' not in os.listdir('.'):
         f = open(ps_coords, 'w+')
         print('Getting Projected Points') 
         for line in range(0,lines):
             for column in range(0, width):
-                east = (tl_easting + epost * line)
-                north = (tl_northing + npost * column)
+                east = (tl_easting + epost * column)
+                north = (tl_northing + npost * line)
                 f.write('%f %f \n' % (east,north))
         print(east)
         print(north)                                       
@@ -288,14 +289,17 @@ def Get_tide(pair):
         
     pg.ras_linear(tide_dz,\
                   width,\
-                  '-','-','-','-','-','-','-',\
+                  '-','-','-','-',-1.5,-0.5,'-',\
                   tide_dz + '.bmp')
-        
-    pg.flip(tide_dz_sar, tide_dz_sar_flip, mli_width, 0, 1)
+    
+    
+    
+    
+    #pg.flip(tide_dz_sar, tide_dz_sar_flip, mli_width, 0, 1)
                   
-    pg.ras_linear(tide_dz_sar_flip,\
+    pg.ras_linear(tide_dz_sar,\
                   mli_width,\
-                  '-','-','-','-','-','-','-',\
+                  '-','-','-','-',-1.5,-0.5,'-',\
                   tide_dz_sar + '.bmp')
         
 def Tide_correct(pair):
@@ -336,7 +340,8 @@ def Tide_correct(pair):
     
     tide_path = '/geog/data/whale/alpha/jizzard/S1/Ferrigno/tide/'
     vel_map = pair + '.filt.disp' #fcomplex
-    tide_dz_sar_flip = pair + '.sar.tide_dz.flip'
+    #tide_dz_sar_flip = pair + '.sar.tide_dz.flip'
+    tide_dz_sar = pair + '.sar.tide_dz'
     inc_angle_sar= image_a + '/' + image_a + '.inc_ang.sar' #float, radians
     vel_out =  pair + '.gnd_detide' #fcomplex
     
@@ -346,7 +351,7 @@ def Tide_correct(pair):
     vel_detide_real = pair + '.detide.real'
     vel_out_perday = pair + '.vel.detide.gnd'
     
-    os.system(tide_path + 'remove_tidal_offset ' + vel_map + ' ' + tide_dz_sar_flip + ' '\
+    os.system(tide_path + 'remove_tidal_offset ' + vel_map + ' ' + tide_dz_sar + ' '\
               + inc_angle_sar + ' ' + str(pair_delay) + ' ' + vel_out + ' '\
               + str(pixels) + ' ' + str(lines))
     
@@ -373,21 +378,22 @@ def Tide_correct(pair):
     
     pg.swap_bytes(vel_detide_real_geo, vel_detide_real_geo_swab, 4)
     
-    dem_seg_par = image_a + '/' + image_a + '.dem_seg_par'
+    dem_seg_par = image_a + '/dem_seg_par'
     
     pg.data2geotiff(dem_seg_par, vel_detide_real_geo_swab, 2, vel_detide_tif)
     
     geo_tide_dz = pair + '.geo.tide_dz'
     geo_tide_diz_tif = geo_tide_dz + '.tif'
-    
-    pg.data2geotiff(dem_seg_par, geo_tide_dz, 2, geo_tide_diz_tif)
-'''   
+    tide_dz_swab = geo_tide_dz + '.swab'
+    pg.swap_bytes(geo_tide_dz, tide_dz_swab, 4)
+    pg.data2geotiff(dem_seg_par, tide_dz_swab, 2, geo_tide_diz_tif)
+
 for image in os.listdir(unzipped_path):
     print(image)
     Get_lut(image, dem, dem_par)
-'''
+
 for pair in os.listdir(path):
-    Get_tide(pair)
+    #Get_tide(pair)
     Tide_correct(pair)
 
     
